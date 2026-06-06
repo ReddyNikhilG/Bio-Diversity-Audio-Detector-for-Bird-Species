@@ -34,13 +34,14 @@ image = (
         "fastapi>=0.110.0",
         "uvicorn[standard]>=0.27.0",
         "python-multipart>=0.0.9",
-        "aiofiles>=23.0.0",
+        "aiofiles>=24.0.0",
         # Audio processing
         "librosa>=0.10.0",
         "soundfile>=0.12.1",
         "scipy>=1.11.0",
         "numpy>=1.24.0,<2.0.0",
         "noisereduce>=3.0.0",
+        "resampy",
         # ML
         "scikit-learn>=1.3.0",
         "tqdm>=4.66.0",
