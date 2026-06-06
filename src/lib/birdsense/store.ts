@@ -50,7 +50,7 @@ interface AppState {
 export const useStore = create<AppState>()(
     persist(
         (set) => ({
-            colabUrl: import.meta.env.VITE_BACKEND_URL || "https://reddynikhilg--birdsense-api-serve.modal.run", health: null, connected: false,
+            colabUrl: import.meta.env.VITE_BACKEND_URL || "https://nikhil281205-birdsense-api.hf.space", health: null, connected: false,
             setColabUrl: (colabUrl) => set({ colabUrl }),
             setHealth: (health) => set({ health }),
             setConnected: (connected) => set({ connected }),
@@ -84,6 +84,15 @@ export const useStore = create<AppState>()(
         {
             name: "birdsense-store",
             partialize: (s) => ({ history: s.history, colabUrl: s.colabUrl }),
+            version: 1,
+            migrate: (persistedState: any, version: number) => {
+                if (persistedState && typeof persistedState === "object" && persistedState.colabUrl) {
+                    if (persistedState.colabUrl.includes("modal.run")) {
+                        persistedState.colabUrl = "https://nikhil281205-birdsense-api.hf.space";
+                    }
+                }
+                return persistedState;
+            },
         },
     ),
 );
