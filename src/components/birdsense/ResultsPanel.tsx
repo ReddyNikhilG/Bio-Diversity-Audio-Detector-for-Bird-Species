@@ -70,8 +70,20 @@ function SpeciesCard({ pred, index }: { pred: Prediction; index: number }) {
             {/* Image header */}
             {wiki?.image_url ? (
                 <div style={{ height: 160, overflow: "hidden", position: "relative" }}>
-                    <img src={wiki.image_url} alt={wiki.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 30%, rgba(4,7,13,0.97) 100%)" }} />
+                    {wiki.url ? (
+                        <a href={wiki.url} target="_blank" rel="noreferrer" style={{ display: "block", height: "100%" }}>
+                            <img 
+                                src={wiki.image_url} 
+                                alt={wiki.title} 
+                                style={{ width: "100%", height: "100%", objectFit: "cover", transition: "filter 0.25s ease" }}
+                                onMouseEnter={(e) => e.currentTarget.style.filter = "brightness(0.85)"}
+                                onMouseLeave={(e) => e.currentTarget.style.filter = "none"}
+                            />
+                        </a>
+                    ) : (
+                        <img src={wiki.image_url} alt={wiki.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    )}
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 30%, rgba(4,7,13,0.97) 100%)", pointerEvents: "none" }} />
                     {isPrimary && (
                         <div style={{
                             position: "absolute", top: 12, left: 12,
@@ -121,7 +133,20 @@ function SpeciesCard({ pred, index }: { pred: Prediction; index: number }) {
                             marginBottom: 4,
                             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                         }}>
-                            {pred.common_name || pred.species}
+                            {wiki?.url ? (
+                                <a 
+                                    href={wiki.url} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    style={{ color: "inherit", textDecoration: "none", transition: "opacity 0.2s" }}
+                                    onMouseEnter={(e) => e.currentTarget.style.opacity = "0.8"}
+                                    onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
+                                >
+                                    {pred.common_name || pred.species}
+                                </a>
+                            ) : (
+                                pred.common_name || pred.species
+                            )}
                         </h3>
                         <p style={{ color: "var(--text-muted)", fontSize: ".8rem", fontStyle: "italic", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                             {pred.species}
@@ -161,23 +186,37 @@ function SpeciesCard({ pred, index }: { pred: Prediction; index: number }) {
 
                 {/* Wiki summary */}
                 {wiki?.summary && (
-                    <p style={{ fontSize: ".82rem", color: "var(--text-muted)", lineHeight: 1.58 }}>
-                        {wiki.summary.slice(0, 200)}{wiki.summary.length > 200 ? "…" : ""}
+                    <p style={{ fontSize: ".82rem", color: "var(--text-muted)", lineHeight: 1.58, marginBottom: 14 }}>
+                        {wiki.summary.slice(0, 350)}{wiki.summary.length > 350 ? "…" : ""}
                     </p>
                 )}
                 {wiki?.url && (
                     <a
                         href={wiki.url} target="_blank" rel="noreferrer"
+                        className="btn btn-ghost btn-sm"
                         style={{
-                            display: "inline-flex", alignItems: "center", gap: 4,
-                            marginTop: 10, color: "var(--accent)", fontSize: ".78rem", fontWeight: 600,
-                            textDecoration: "none",
-                            transition: "opacity .2s",
+                            borderColor: "rgba(30,215,96,0.3)",
+                            color: "var(--accent)",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            fontSize: ".75rem",
+                            padding: "6px 14px",
+                            borderRadius: "8px",
+                            background: "rgba(30,215,96,0.04)",
+                            transition: "all 0.2s ease",
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
-                        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "rgba(30,215,96,0.12)";
+                            e.currentTarget.style.borderColor = "var(--accent)";
+                            e.currentTarget.style.transform = "translateY(-1px)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "rgba(30,215,96,0.04)";
+                            e.currentTarget.style.borderColor = "rgba(30,215,96,0.3)";
+                            e.currentTarget.style.transform = "none";
+                        }}
                     >
-                        Read on Wikipedia →
+                        📖 Wikipedia Article ↗
                     </a>
                 )}
             </div>
