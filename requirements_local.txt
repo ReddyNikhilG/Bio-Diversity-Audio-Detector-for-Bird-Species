@@ -1,0 +1,17 @@
+# ============================================================
+# requirements_local.txt — LOCAL LAPTOP ONLY
+# Install with: pip install -r requirements_local.txt
+#
+# IMPORTANT: Do NOT install this in Google Colab.
+# All heavy ML processing runs on Colab's GPU backend.
+# This file contains ONLY the lightweight UI dependencies
+# needed to run the Streamlit dashboard on your laptop.
+# ============================================================
+
+streamlit>=1.32.0
+pandas>=2.0.0
+numpy>=1.24.0
+scipy>=1.11.0
+plotly>=5.18.0
+requests>=2.31.0
+wikipedia>=1.4.0
