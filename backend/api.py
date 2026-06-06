@@ -156,11 +156,13 @@ def wiki_proxy(species_name: str):
         return _wiki_cache[species_name]
     try:
         import requests as req
+        headers = {"User-Agent": "BirdSenseAPI/1.0 (contact: nikhil281205@gmail.com)"}
         search = req.get(
             "https://en.wikipedia.org/w/api.php",
             params={"action": "query", "list": "search",
                     "srsearch": f"{species_name} bird",
                     "format": "json", "srlimit": 1},
+            headers=headers,
             timeout=10,
         ).json().get("query", {}).get("search", [])
         if not search:
@@ -169,6 +171,7 @@ def wiki_proxy(species_name: str):
         title = search[0]["title"]
         data  = req.get(
             f"https://en.wikipedia.org/api/rest_v1/page/summary/{title.replace(' ', '_')}",
+            headers=headers,
             timeout=10,
         ).json()
 
