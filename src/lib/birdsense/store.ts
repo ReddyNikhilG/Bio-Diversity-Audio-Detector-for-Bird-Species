@@ -83,13 +83,11 @@ export const useStore = create<AppState>()(
         }),
         {
             name: "birdsense-store",
-            partialize: (s) => ({ history: s.history, colabUrl: s.colabUrl }),
-            version: 1,
+            partialize: (s) => ({ history: s.history }),
+            version: 2,
             migrate: (persistedState: any, version: number) => {
-                if (persistedState && typeof persistedState === "object" && persistedState.colabUrl) {
-                    if (persistedState.colabUrl.includes("modal.run")) {
-                        persistedState.colabUrl = "https://nikhil281205-birdsense-api.hf.space";
-                    }
+                if (persistedState && typeof persistedState === "object") {
+                    delete persistedState.colabUrl;
                 }
                 return persistedState;
             },

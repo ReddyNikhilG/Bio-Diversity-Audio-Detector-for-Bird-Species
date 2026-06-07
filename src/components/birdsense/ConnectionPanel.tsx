@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/lib/birdsense/store";
 import { checkHealth, setColabUrl } from "@/lib/birdsense/api";
@@ -8,6 +8,7 @@ export default function ConnectionPanel() {
     const [urlInput, setUrlInput] = useState(colabUrl);
     const [checking, setChecking] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [showSettings, setShowSettings] = useState(false);
 
     const doConnect = useCallback(async (url: string) => {
         if (!url.trim()) return;
@@ -24,36 +25,62 @@ export default function ConnectionPanel() {
         } finally { setChecking(false); }
     }, [storeSetUrl, setHealth, setConnected]);
 
+    // Sync input field when colabUrl hydrates or changes
+    useEffect(() => {
+        if (colabUrl) {
+            setUrlInput(colabUrl);
+        }
+    }, [colabUrl]);
+
+    // Auto-connect on page load/mount if colabUrl is configured and not already connected
+    useEffect(() => {
+        if (colabUrl && !connected) {
+            doConnect(colabUrl);
+        }
+    }, [colabUrl, connected, doConnect]);
+
     const models = health?.models_loaded;
     const gpuName = health?.gpu_devices?.[0]?.replace("/physical_device:GPU:", "GPU ") ?? "GPU";
 
     return (
         <div>
             {/* URL input row */}
-            <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
-                <div style={{ position: "relative", flex: 1 }}>
-                    <span style={{
-                        position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
-                        fontSize: ".95rem", pointerEvents: "none", zIndex: 1,
-                    }}>🌐</span>
-                    <input
-                        className="input" style={{ paddingLeft: 40 }} type="url"
-                        value={urlInput}
-                        onChange={(e) => setUrlInput(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && doConnect(urlInput)}
-                        placeholder="https://xxxx.ngrok-free.app  or  https://xxxx.loca.lt"
-                        spellCheck={false} autoComplete="off"
-                    />
-                </div>
-                <button
-                    className="btn btn-primary btn-sm"
-                    disabled={checking || !urlInput.trim()}
-                    onClick={() => doConnect(urlInput)}
-                    style={{ minWidth: 90, fontSize: ".85rem", padding: "0 18px" }}
-                >
-                    {checking ? <span className="spinner" style={{ width: 16, height: 16 }} /> : "Connect"}
-                </button>
-            </div>
+            <AnimatePresence>
+                {(!connected || showSettings) && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        style={{ overflow: "hidden" }}
+                    >
+                        <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+                            <div style={{ position: "relative", flex: 1 }}>
+                                <span style={{
+                                    position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
+                                    fontSize: ".95rem", pointerEvents: "none", zIndex: 1,
+                                }}>🌐</span>
+                                <input
+                                    className="input" style={{ paddingLeft: 40 }} type="url"
+                                    value={urlInput}
+                                    onChange={(e) => setUrlInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && doConnect(urlInput)}
+                                    placeholder="https://xxxx.ngrok-free.app  or  https://xxxx.loca.lt"
+                                    spellCheck={false} autoComplete="off"
+                                />
+                            </div>
+                            <button
+                                className="btn btn-primary btn-sm"
+                                disabled={checking || !urlInput.trim()}
+                                onClick={() => doConnect(urlInput)}
+                                style={{ minWidth: 90, fontSize: ".85rem", padding: "0 18px" }}
+                            >
+                                {checking ? <span className="spinner" style={{ width: 16, height: 16 }} /> : "Connect"}
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Status banner */}
             <motion.div
@@ -68,14 +95,23 @@ export default function ConnectionPanel() {
                                 : "Enter your Colab tunnel URL to connect to the GPU backend"}
                 </span>
                 {connected && (
-                    <button
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => doConnect(urlInput)}
-                        disabled={checking}
-                        style={{ marginLeft: "auto", fontSize: ".75rem" }}
-                    >
-                        🔄 Re-check
-                    </button>
+                    <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                        <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => setShowSettings(!showSettings)}
+                            style={{ fontSize: ".75rem", padding: "4px 8px" }}
+                        >
+                            ⚙️ {showSettings ? "Hide Settings" : "Configure"}
+                        </button>
+                        <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => doConnect(urlInput)}
+                            disabled={checking}
+                            style={{ fontSize: ".75rem", padding: "4px 8px" }}
+                        >
+                            🔄 Re-check
+                        </button>
+                    </div>
                 )}
             </motion.div>
 
