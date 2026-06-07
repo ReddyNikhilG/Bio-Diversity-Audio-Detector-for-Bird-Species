@@ -40,6 +40,21 @@ export default function FrequencyCursor() {
     };
   }, []);
 
+  useEffect(() => {
+    const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    if (isTouchDevice) return;
+
+    if (visible) {
+      document.body.classList.add("custom-cursor-active");
+    } else {
+      document.body.classList.remove("custom-cursor-active");
+    }
+
+    return () => {
+      document.body.classList.remove("custom-cursor-active");
+    };
+  }, [visible]);
+
   if (!visible) return null;
 
   return (
