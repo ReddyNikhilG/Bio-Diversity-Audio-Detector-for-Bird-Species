@@ -945,44 +945,121 @@ function Landing() {
       {/* ── FOOTER ───────────────────────────────────────────────────── */}
       <footer
         style={{
-          padding: "32px",
-          textAlign: "center",
+          padding: "60px 32px 30px",
           borderTop: "1px solid var(--border-subtle)",
+          background: "var(--bg-deep)",
+          position: "relative",
+          zIndex: 2,
         }}
       >
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
-            marginBottom: 10,
+            maxWidth: 1200,
+            margin: "0 auto",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: 48,
+            marginBottom: 40,
           }}
         >
-          <span
-            style={{
-              width: 20,
-              height: 20,
-              borderRadius: 6,
-              background: "linear-gradient(135deg, #1ed760, #a3e635)",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 10,
-              color: "#04140a",
-              fontWeight: 900,
-            }}
-          >
-            B
-          </span>
-          <span className="font-display" style={{ fontWeight: 700, fontSize: ".9rem" }}>
-            BirdSense
-          </span>
+          {/* Brand Column */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+              <span
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 6,
+                  background: "linear-gradient(135deg, #1ed760, #a3e635)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 12,
+                  color: "#04140a",
+                  fontWeight: 900,
+                }}
+              >
+                B
+              </span>
+              <span className="font-display" style={{ fontWeight: 800, fontSize: "1.1rem" }}>
+                BirdSense
+              </span>
+            </div>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", lineHeight: 1.6, maxWidth: 280 }}>
+              Bioacoustic species detection using a weighted neural ensemble with source separation.
+            </p>
+          </div>
+
+          {/* Quick Links Column */}
+          <div>
+            <h4 className="font-display" style={{ fontSize: "0.78rem", fontWeight: 700, letterSpacing: 1.5, color: "var(--text-primary)", textTransform: "uppercase", marginBottom: 18 }}>
+              Quick Links
+            </h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <Link to="/" style={{ color: "var(--text-muted)", fontSize: "0.85rem", textDecoration: "none" }} onMouseEnter={(e) => (e.currentTarget.style.color = "var(--accent)")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}>
+                Home
+              </Link>
+              <Link to="/app" style={{ color: "var(--text-muted)", fontSize: "0.85rem", textDecoration: "none" }} onMouseEnter={(e) => (e.currentTarget.style.color = "var(--accent)")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}>
+                Launch App
+              </Link>
+              <Link to="/about" style={{ color: "var(--text-muted)", fontSize: "0.85rem", textDecoration: "none" }} onMouseEnter={(e) => (e.currentTarget.style.color = "var(--accent)")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}>
+                About
+              </Link>
+            </div>
+          </div>
+
+          {/* Project Column */}
+          <div>
+            <h4 className="font-display" style={{ fontSize: "0.78rem", fontWeight: 700, letterSpacing: 1.5, color: "var(--text-primary)", textTransform: "uppercase", marginBottom: 18 }}>
+              Project
+            </h4>
+            <a
+              href="https://github.com/ReddyNikhilG/Bio-Diversity-Audio-Detector-for-Bird-Species"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: "var(--text-muted)",
+                fontSize: "0.85rem",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                marginBottom: 12
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--accent)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8 }}>
+                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+              </svg>
+              View on GitHub
+            </a>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.82rem", lineHeight: 1.6 }}>
+              Built with Python, Modal, React, Vite & TanStack
+            </p>
+          </div>
         </div>
-        <p style={{ color: "var(--text-subtle)", fontSize: ".75rem" }}>
-          Bioacoustic species detection · BirdNET + YAMNet + Perch ensemble ·{" "}
-          {new Date().getFullYear()}
-        </p>
+
+        {/* Bottom copyright row */}
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            borderTop: "1px solid var(--border-subtle)",
+            paddingTop: 24,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 16,
+            fontSize: "0.78rem",
+            color: "var(--text-muted)"
+          }}
+        >
+          <p>© {new Date().getFullYear()} BirdSense. Educational project by Gali Reddy Nikhil.</p>
+          <p>
+            Made with <span style={{ color: "#f87171" }}>❤️</span> for learning
+          </p>
+        </div>
       </footer>
     </div>
   );
