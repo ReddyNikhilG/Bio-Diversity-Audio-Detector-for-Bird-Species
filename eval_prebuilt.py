@@ -20,6 +20,7 @@ _cached_analyzer      = None
 _cached_yamnet_model  = None
 _cached_yamnet_classes = []
 _cached_perch_model   = None
+_cached_perch_classes = []
 _birdnet_labels: dict = {}       # scientific_name → common_name
 
 import threading
@@ -52,6 +53,57 @@ def _load_birdnet_labels():
         print(f"[WARN] Could not load BirdNET label file: {e}")
 
 
+def _load_perch_labels():
+    """Build index → scientific_name lookup from Google Perch's label file."""
+    global _cached_perch_classes
+    if _cached_perch_classes:
+        return
+    try:
+        import tensorflow_hub as hub
+        import csv
+        model_path = hub.resolve("https://tfhub.dev/google/bird-vocalization-classifier/4")
+        labels_path = os.path.join(model_path, "assets", "label.csv")
+        if os.path.exists(labels_path):
+            classes = []
+            with open(labels_path, "r", encoding="utf-8") as f:
+                reader = csv.reader(f)
+                rows = list(reader)
+                if rows:
+                    # Check if there is a header
+                    start_idx = 0
+                    first_row = rows[0]
+                    if len(first_row) >= 2 and any(k in first_row[0].lower() or k in first_row[1].lower() for k in ("scientific", "ebird", "common", "label")):
+                        start_idx = 1
+                    
+                    # Auto-detect column containing scientific name
+                    sci_col = 0
+                    if len(rows) > start_idx:
+                        for row in rows[start_idx:min(start_idx + 10, len(rows))]:
+                            if len(row) >= 2:
+                                if " " in row[1] or "_" in row[1]:
+                                    sci_col = 1
+                                    break
+                                elif " " in row[0] or "_" in row[0]:
+                                    sci_col = 0
+                                    break
+                    
+                    for i in range(start_idx, len(rows)):
+                        row = rows[i]
+                        if len(row) > sci_col:
+                            sci_name = row[sci_col].strip().lower().replace("_", " ")
+                            classes.append(sci_name)
+                        elif len(row) > 0:
+                            classes.append(row[0].strip().lower().replace("_", " "))
+                        else:
+                            classes.append("")
+            _cached_perch_classes = classes
+            print(f"Loaded {len(_cached_perch_classes)} Google Perch classes.")
+        else:
+            print("[WARN] Perch label.csv not found in assets.")
+    except Exception as e:
+        print(f"[WARN] Could not load Perch label file: {e}")
+
+
 def get_common_name(scientific_name: str) -> str:
     """Return common name for a scientific name, or the name itself."""
     return _birdnet_labels.get(scientific_name.lower(), scientific_name)
@@ -63,7 +115,7 @@ def load_models_once():
     Thread-safe: uses a lock to prevent double-loading on concurrent requests.
     """
     global _cached_analyzer, _cached_yamnet_model, _cached_yamnet_classes
-    global _cached_perch_model, COUNCIL_AVAILABLE
+    global _cached_perch_model, COUNCIL_AVAILABLE, _cached_perch_classes
 
     with _model_lock:
         from birdnetlib import Recording as _Recording
@@ -110,6 +162,7 @@ def load_models_once():
                 try:
                     import tensorflow_hub as hub
                     _cached_perch_model = hub.load("https://tfhub.dev/google/bird-vocalization-classifier/4")
+                    _load_perch_labels()
                     print("Perch loaded!")
                 except Exception as e:
                     print(f"[WARN] Perch load failed: {e}")
@@ -139,8 +192,8 @@ def _yamnet_bird_probability(yamnet_model, yamnet_classes, audio_16k) -> float:
     return float(bird_prob / total)
 
 
-def _perch_confidence(perch_model, audio_32k) -> float:
-    """Returns max softmax confidence from Perch (0→1)."""
+def _perch_probabilities(perch_model, audio_32k) -> dict:
+    """Returns a dictionary of scientific_name -> probability from Google Perch."""
     import numpy as np
     try:
         import tensorflow as tf
@@ -150,10 +203,18 @@ def _perch_confidence(perch_model, audio_32k) -> float:
         else:
             y_perch = np.pad(audio_32k, (0, max(0, frame_step - len(audio_32k))))
         logits = perch_model.infer_tf(tf.constant(y_perch[tf.newaxis, :]))[0]["predictions"]
-        return float(np.max(tf.nn.softmax(logits).numpy()))
+        probabilities = tf.nn.softmax(logits).numpy()
+        
+        perch_probs = {}
+        for idx, prob in enumerate(probabilities):
+            if idx < len(_cached_perch_classes):
+                sci_name = _cached_perch_classes[idx]
+                if sci_name:
+                    perch_probs[sci_name] = max(perch_probs.get(sci_name, 0.0), float(prob))
+        return perch_probs
     except Exception as e:
         print(f"[WARN] Perch inference error: {e}")
-        return 0.0
+        return {}
 
 
 def main(
@@ -226,12 +287,12 @@ def main(
                     else:
                         break
 
-                # ── Per-species temporal voting accumulators ──────────────────
-                species_temporal_scores: dict[str, float] = {}
-                species_max_confidence:  dict[str, float] = {}
-                species_timestamps:      dict[str, list]  = {}
+                # ── Segment-based ensembling & deduplication ──────────────────
+                # segment_scores: species -> segment_index -> max_confidence
+                segment_scores: dict[str, dict[int, float]] = {}
                 best_scores: dict[str, float] = {k: 0.0 for k in file_paths}
-                n_chunks_total = 0
+                # species_segment_timestamps: species -> segment_index -> (start_time, end_time)
+                species_segment_timestamps: dict[str, dict[int, tuple[float, float]]] = {}
 
                 for key, path in file_paths.items():
                     if not os.path.exists(path):
@@ -262,12 +323,12 @@ def main(
                         except Exception as e:
                             print(f"[WARN] YAMNet error for {path}: {e}")
 
-                    # ── Perch confidence ──────────────────────────────────────
-                    perch_conf = 0.0
+                    # ── Perch probabilities ───────────────────────────────────
+                    perch_probs = {}
                     if perch_model is not None:
                         try:
                             emit("perch", "Google Perch review…", 82)
-                            perch_conf = _perch_confidence(perch_model, y_32k)
+                            perch_probs = _perch_probabilities(perch_model, y_32k)
                         except Exception as e:
                             print(f"[WARN] Perch error for {path}: {e}")
 
@@ -278,51 +339,81 @@ def main(
                         start_t = detection.get("start_time", 0.0)
                         end_t   = detection.get("end_time",   3.0)
 
+                        # Match Perch's confidence by scientific name (normalized to spaces)
+                        sp_name_lower = sp_name.lower().replace("_", " ")
+                        sp_perch_conf = perch_probs.get(sp_name_lower, 0.0)
+
                         # Weighted ensemble score
                         ensemble_conf = min(1.0,
                             W_BIRDNET * bn_conf +
                             W_YAMNET  * yamnet_bird_prob * bn_conf +
-                            W_PERCH   * perch_conf
+                            W_PERCH   * sp_perch_conf
                         )
-
-                        # Temporal accumulation (normalized by chunk count)
-                        n_chunks_total += 1
-                        species_temporal_scores[sp_name] = (
-                            species_temporal_scores.get(sp_name, 0.0) + ensemble_conf
-                        )
-
-                        # Track max confidence
-                        if ensemble_conf > species_max_confidence.get(sp_name, 0.0):
-                            species_max_confidence[sp_name] = ensemble_conf
-
-                        # Track timestamps
-                        if sp_name not in species_timestamps:
-                            species_timestamps[sp_name] = []
-                        species_timestamps[sp_name].append({
-                            "start": round(start_t, 2),
-                            "end":   round(end_t,   2),
-                            "conf":  round(ensemble_conf, 4),
-                        })
 
                         # Legacy target tracking
                         if sp_name.lower() == species_clean.lower():
                             if ensemble_conf > best_scores[key]:
                                 best_scores[key] = ensemble_conf
 
+                        # Segment-based accumulation (deduplicating same segment across stems)
+                        seg_idx = int(round(start_t) / 3.0)
+                        
+                        if sp_name not in segment_scores:
+                            segment_scores[sp_name] = {}
+                        if sp_name not in species_segment_timestamps:
+                            species_segment_timestamps[sp_name] = {}
+
+                        # Take the maximum confidence for this species in this segment across all stems
+                        segment_scores[sp_name][seg_idx] = max(
+                            segment_scores[sp_name].get(seg_idx, 0.0), ensemble_conf
+                        )
+                        species_segment_timestamps[sp_name][seg_idx] = (start_t, end_t)
+
                 emit("voting", "Temporal voting & ranking…", 90)
 
-                # ── Adaptive threshold ────────────────────────────────────────
-                all_scores = list(species_temporal_scores.values())
-                if all_scores:
-                    mu  = float(np.mean(all_scores))
-                    sig = float(np.std(all_scores))
-                    threshold = mu + 0.5 * sig  # keep species clearly above noise floor
-                else:
-                    threshold = 0.05
+                # ── Aggregate scores per species ──────────────────────────────
+                species_temporal_scores: dict[str, float] = {}
+                species_max_confidence:  dict[str, float] = {}
+                species_timestamps:      dict[str, list]  = {}
 
-                # Normalize temporal scores by number of chunks
-                n = max(1, n_chunks_total)
-                normalized = {sp: s / n for sp, s in species_temporal_scores.items()}
+                for sp_name, segs in segment_scores.items():
+                    # Sum of max confidences across all segments
+                    species_temporal_scores[sp_name] = sum(segs.values())
+                    # Maximum confidence across all segments
+                    species_max_confidence[sp_name] = max(segs.values())
+                    
+                    # Timestamps sorted by confidence descending
+                    sorted_segs = sorted(segs.items(), key=lambda x: x[1], reverse=True)
+                    species_timestamps[sp_name] = []
+                    for seg_idx, conf in sorted_segs:
+                        start_t, end_t = species_segment_timestamps[sp_name][seg_idx]
+                        species_timestamps[sp_name].append({
+                            "start": round(start_t, 2),
+                            "end":   round(end_t,   2),
+                            "conf":  round(conf, 4),
+                        })
+
+                # Determine total segments in the recording for normalization
+                total_duration = 0.0
+                try:
+                    orig_path = file_paths.get("Original")
+                    if orig_path and os.path.exists(orig_path):
+                        total_duration = librosa.get_duration(path=orig_path)
+                except Exception:
+                    pass
+                n_segments = max(1, int(round(total_duration) / 3.0))
+
+                # Normalize temporal scores by total duration segments
+                normalized = {sp: s / n_segments for sp, s in species_temporal_scores.items()}
+
+                # ── Adaptive threshold on max confidences ─────────────────────
+                all_confs = list(species_max_confidence.values())
+                if all_confs:
+                    mu  = float(np.mean(all_confs))
+                    sig = float(np.std(all_confs))
+                    threshold = max(0.10, min(mu + 0.2 * sig, 0.35))
+                else:
+                    threshold = 0.15
 
                 # Build sorted predictions with common names
                 top_predictions = []
