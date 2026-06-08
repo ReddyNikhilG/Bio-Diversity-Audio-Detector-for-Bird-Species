@@ -229,8 +229,8 @@ function ParticleForest({ count = 1600 }: { count?: number }) {
     return (
         <points ref={ref}>
             <bufferGeometry>
-                <bufferAttribute attach="attributes-position" args={[positions.current, 3]} />
-                <bufferAttribute attach="attributes-color" args={[colors.current, 3]} />
+                <bufferAttribute attach="attributes-position" args={[positions.current!, 3]} />
+                <bufferAttribute attach="attributes-color" args={[colors.current!, 3]} />
             </bufferGeometry>
             <pointsMaterial
                 vertexColors

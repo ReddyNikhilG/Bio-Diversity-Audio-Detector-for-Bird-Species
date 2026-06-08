@@ -179,9 +179,14 @@ def _yamnet_bird_probability(yamnet_model, yamnet_classes, audio_16k) -> float:
     avg_scores = np.mean(scores.numpy(), axis=0)
 
     bird_kws  = ['bird', 'animal', 'wildlife', 'chirp', 'squawk', 'owl',
-                 'crow', 'pigeon', 'sparrow', 'canary', 'robin', 'finch']
+                 'crow', 'pigeon', 'sparrow', 'canary', 'robin', 'finch',
+                 'gull', 'eagle', 'hawk', 'falcon', 'woodpecker', 'tweet']
     noise_kws = ['engine', 'truck', 'car', 'machine', 'motor', 'vehicle',
-                 'noise', 'static', 'wind', 'music', 'speech', 'human']
+                 'noise', 'static', 'wind', 'music', 'speech', 'human',
+                 'person', 'people', 'whistle', 'whistling', 'laughter',
+                 'screaming', 'shout', 'cough', 'sneeze', 'applause',
+                 'clap', 'footstep', 'sine wave', 'tuning fork', 'siren',
+                 'alarm', 'horn', 'beep', 'bell', 'tool', 'groan', 'whispering']
 
     # Build probability as weighted sum of bird-class scores
     bird_prob  = sum(avg_scores[i] for i, c in enumerate(yamnet_classes) if any(k in c.lower() for k in bird_kws))
@@ -343,12 +348,24 @@ def main(
                         sp_name_lower = sp_name.lower().replace("_", " ")
                         sp_perch_conf = perch_probs.get(sp_name_lower, 0.0)
 
-                        # Weighted ensemble score
-                        ensemble_conf = min(1.0,
-                            W_BIRDNET * bn_conf +
-                            W_YAMNET  * yamnet_bird_prob * bn_conf +
-                            W_PERCH   * sp_perch_conf
-                        )
+                        # Base ensemble score of classifiers (normalized weights: 80% BirdNET, 20% Perch)
+                        if perch_model is not None:
+                            base_conf = 0.80 * bn_conf + 0.20 * sp_perch_conf
+                        else:
+                            base_conf = bn_conf
+
+                        # Apply YAMNet noise gate if YAMNet is loaded
+                        if yamnet_model is not None:
+                            if yamnet_bird_prob < 0.15:
+                                # Scale down heavily if identified as noise (e.g. engine, human whistle)
+                                ensemble_conf = base_conf * (yamnet_bird_prob / 0.15)
+                            else:
+                                # Real bird signal, no penalty
+                                ensemble_conf = base_conf * min(1.0, yamnet_bird_prob + 0.1)
+                        else:
+                            ensemble_conf = base_conf
+                            
+                        ensemble_conf = min(1.0, max(0.0, ensemble_conf))
 
                         # Legacy target tracking
                         if sp_name.lower() == species_clean.lower():
