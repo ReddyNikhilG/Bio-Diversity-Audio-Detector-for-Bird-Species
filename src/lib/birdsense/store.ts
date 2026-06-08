@@ -50,7 +50,7 @@ interface AppState {
 export const useStore = create<AppState>()(
     persist(
         (set) => ({
-            colabUrl: "https://nikhil281205-birdsense-api.hf.space", health: null, connected: false,
+            colabUrl: "https://nikhil281205-birdsense-api.hf.space/", health: null, connected: false,
             setColabUrl: (colabUrl) => set({ colabUrl }),
             setHealth: (health) => set({ health }),
             setConnected: (connected) => set({ connected }),
