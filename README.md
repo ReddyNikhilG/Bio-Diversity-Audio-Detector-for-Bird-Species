@@ -1,13 +1,3 @@
----
-title: BirdSense API
-emoji: 🐦
-colorFrom: green
-colorTo: indigo
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # <p align="center">🐦 BirdSense AI — Bioacoustic Species Detector</p>
 
 <p align="center">
