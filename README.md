@@ -202,4 +202,4 @@ The backend API automatically documents itself at `/docs` (Swagger UI) or `/redo
 ## 📄 License & Attribution
 *   **BirdNET Classifier:** Powered by Cornell Lab of Ornithology (licensed under Creative Commons).
 *   **Google Perch & YAMNet:** Open-source models distributed via TensorFlow Hub under the Apache 2.0 license.
-*   Developed as part of the Bioacoustic Diversity Project. Contact: `nikhil281205@gmail.com`
+*   Developed as part of the Bioacoustic Diversity Project. Contact: `reddynikhil2812@gmail.com`
